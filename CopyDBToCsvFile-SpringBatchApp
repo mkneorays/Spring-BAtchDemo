@@ -1,0 +1,256 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.itcs</groupId>
+	<artifactId>CsvToDB-SpringBatchApp</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<name>CsvToDB-SpringBatchApp</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<dependencies>
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-dbcp2 -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.1.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-core</artifactId>
+			<version>3.0.8.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>9.4-1201-jdbc41</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>4.3.12.RELEASE</version>
+		</dependency>
+	</dependencies>
+</project>
+---------------------------------------------------------------
+mithu=# select * from student;
+ id |  name   | age | address
+----+---------+-----+---------
+  1 | mithu   |  22 | jamni
+  2 | ram     |  25 | bgp
+  3 | shyam   |  35 | hyd
+  4 | santosh |  11 | tamil
+  5 | santosh |  21 | bnglor
+  ------------------------------------------------
+1,mithu,22,jamni
+2,ram,25,bgp
+3,shyam,35,hyd
+5,santosh,21,bnglor
+-------------------------------------------------------
+package com.cts.test;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class StudentDataDBToCsvFileTest {
+
+	public static void main(String[] args) throws JobExecutionAlreadyRunningException,
+	JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException {
+		System.out.println("hello");
+		JobLauncher jl=null;
+		JobExecution je=null;
+		Job job=null;
+		ApplicationContext ac=null;
+		ac=new ClassPathXmlApplicationContext("com/cts/cnfgs/spring-batch-beans.xml");
+		jl=ac.getBean("jobLauncher",JobLauncher.class);
+		job=(Job) ac.getBean("sjob");
+		System.out.println("hii");
+		je=jl.run(job, new JobParameters());
+		System.out.println("job Exit status"+je.getStatus());
+		System.out.println("game over");
+		
+	}//main
+}//class
+--------------------------------------------------------------------------
+package com.cts.rowmapper;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import org.springframework.jdbc.core.RowMapper;
+
+import com.cts.beans.StudentDetails;
+
+public class StudentRowMapper implements RowMapper<StudentDetails> {
+
+	public StudentDetails mapRow(ResultSet rs, int rowNum) throws SQLException {
+		System.out.println("maprow method");
+		StudentDetails sd=null;
+		sd=new StudentDetails();
+		sd.setId(rs.getInt("ID"));
+		sd.setName(rs.getString("NAME"));
+		sd.setAge(rs.getInt("AGE"));
+		sd.setAddress(rs.getString("ADDRESS"));
+		System.out.println("db data"+sd);
+		return sd;
+	}//mapRow method
+}//class
+-------------------------------------------------------------------------
+package com.cts.beans;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+
+public class StudentDetails {
+	private int id;
+	private String name;
+	private int age;
+	private String address;
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getAge() {
+		return age;
+	}
+
+	public void setAge(int age) {
+		this.age = age;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
+	}
+
+	@Override
+	public String toString() {
+		return "StudentDetails [id=" + id + ", name=" + name + ", age=" + age + ", address=" + address + "]";
+	}
+}
+-----------------------------------------------------------------------------------
+package com.cts.batch;
+
+import org.springframework.batch.item.ItemProcessor;
+
+import com.cts.beans.StudentDetails;
+
+public class StudentItemProcessor implements ItemProcessor<StudentDetails, StudentDetails> {
+
+	public StudentDetails process(StudentDetails item) throws Exception {
+		// only returns those StudentsDetails whome age grater than 18
+		System.out.println("processor"+item);
+		if (item.getAge() < 18)
+			return null;
+		return item;
+	}// process method
+}// class
+---------------------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<!-- cnfgs dbcp dataSource -->
+	<bean id="dbcp" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="driverClassName"
+			value="org.postgresql.Driver" />
+		<property name="url"
+			value="jdbc:postgresql://localhost:5432/mithu" />
+		<property name="username" value="postgres" />
+		<property name="password" value="postgre" />
+	</bean>
+	<!-- Itemreader which reads date from DB and returns to row mapped by rowMapper -->
+	<bean id="reader"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader">
+		<property name="dataSource" ref="dbcp" />
+		<property name="sql"
+			value="SELECT ID,NAME,AGE,ADDRESS FROM STUDENT" />
+		<property name="rowMapper">
+			<bean class="com.cts.rowmapper.StudentRowMapper" />
+		</property>
+	</bean>
+	<!-- optional ItemProcessor to perform business logic on input -->
+	<bean id="processor" class="com.cts.batch.StudentItemProcessor" />
+
+	<!-- ItemWriter writes a row of db one by one in csv file -->
+	<bean id="writer"
+		class="org.springframework.batch.item.file.FlatFileItemWriter">
+		<property name="resource" value="file:csv/students_details.csv" />
+		<!-- An Aggregator which converts an object into delimted list of strings -->
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="," />
+				<property name="fieldExtractor">
+					<!-- Exreactor which returns the value of beans property through reflection -->
+					<bean
+						class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+						<property name="names"	value=" id , name , age , address " />
+						<!-- inside csv header column is not comming like ID NAME  need to solve -->
+					</bean>
+				</property>
+			</bean>
+		</property>
+	</bean>
+	<!-- JobLauncher and JobRepository cnfgs -->
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean" />
+
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	<!-- <bean id="launcher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="repository" />
+	</bean>
+	<bean id="repository" class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean" />
+    -->  
+    
+     <!-- still we need a transaction manager -->
+     <bean id="txmg" class="org.springframework.batch.support.transaction.ResourcelessTransactionManager"/>
+     <!-- Actual Job -->
+     <batch:job id="sjob">
+	  <batch:step id="step1">
+		<batch:tasklet transaction-manager="txmg">
+			<batch:chunk reader="reader" writer="writer"
+				processor="processor" commit-interval="2" />
+		</batch:tasklet>
+	   </batch:step>
+     </batch:job>
+</beans>
