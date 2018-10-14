@@ -1,0 +1,304 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.itcs</groupId>
+	<artifactId>CopyXmlToDB-SpringBatchApp</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<name>CopyXmlToDB-SpringBatchApp</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-oxm</artifactId>
+			<version>4.3.2.RELEASE</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.batch</groupId>
+			<artifactId>spring-batch-core</artifactId>
+			<version>3.0.8.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>9.4-1201-jdbc41</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>4.3.12.RELEASE</version>
+		</dependency>
+	</dependencies>
+</project>
+-----------------------------------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- <StudentDetails> <id>10</id> <name>Suresh </name> <age>29</age> <address>Anhra</address> 
+	</StudentDetails> -->
+
+<StudentDetails>
+	<student>
+		<id>10</id>
+		<name>Suresh </name>
+		<age>29</age>
+		<address>Anhra</address>
+		<dob>2-2-2002</dob>
+	</student>
+	<student>
+		<id>11</id>
+		<name>Hari </name>
+		<age>30</age>
+		<address>odisha</address>
+		<dob>1993-02-01</dob>
+	</student>
+</StudentDetails>
+------------------------------------------------------------------------------
+id |  name   | age | address |    dob
+----+---------+-----+---------+------------
+  2 | raja    |  22 | bgp     | 2017-03-14
+  3 | ram     |  32 | bgp     | 2018-02-14
+ 10 | Suresh  |  29 | Anhra   | 2019-02-01
+ 11 | Hari    |  30 | odisha  | 1993-02-01
+ ------------------------------------------------------------------------------------
+ package com.cts.beans;
+
+import java.sql.Date;
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+
+@XmlRootElement(name="student")
+@XmlAccessorType(XmlAccessType.FIELD) //its mandatory if u decelear annotations on fileld
+public class StudentDetails {
+
+	//@XmlElement(name="id")
+	private int id;
+	//@XmlElement(name="id")
+	private String name;
+	//@XmlElement(name="id")
+	private int age;
+	//@XmlElement(name="id")
+	private String address;
+	@XmlElement(name="dob")
+	@XmlJavaTypeAdapter(type=Date.class ,value=com.cts.adapter.SQLDateAdapter.class)
+    private Date dob;
+    
+	public Date getDob() {
+		return dob;
+	}
+
+	public void setDob(Date dob) {
+		this.dob = dob;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getAge() {
+		return age;
+	}
+
+	public void setAge(int age) {
+		this.age = age;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
+	}
+
+	@Override
+	public String toString() {
+		return "StudentDetails [id=" + id + ", name=" + name + ", age=" + age + ", address=" + address + ", dob=" + dob
+				+ "]";
+	}
+
+	
+}
+----------------------------------------------------------------------------------
+package com.cts.batchsetter;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import org.springframework.batch.item.database.ItemPreparedStatementSetter;
+
+import com.cts.beans.StudentDetails;
+
+public class StudentDetailsSetter implements  ItemPreparedStatementSetter<StudentDetails> {
+
+	public void setValues(StudentDetails item, PreparedStatement ps) throws SQLException {
+		System.out.println(item);
+	ps.setInt(1, item.getId());
+	ps.setString(2, item.getName());
+	ps.setInt(3, item.getAge());
+	ps.setString(4, item.getAddress());
+	ps.setDate(5, item.getDob());
+	}//setValues method
+	
+}//class
+--------------------------------------------------------------
+package com.cts.adapter;
+
+import java.sql.Date;
+
+import javax.xml.bind.annotation.adapters.XmlAdapter;
+
+public class SQLDateAdapter extends XmlAdapter<String, Date> {
+
+	@Override
+	public Date unmarshal(String v) throws Exception {
+		System.out.println("any formate date  "+v); //here xml date  value will come but we need to convet 
+		                                //in yyyy-mm-dd formate then call next statement kkkk
+		System.out.println("java.sql.Date.valueOf(v)   "+v+"   "+java.sql.Date.valueOf(v));
+		return java.sql.Date.valueOf(v);
+	}
+
+	@Override
+	public String marshal(Date v) throws Exception {
+		System.out.println("Date v.toString()     "+v+"      "+v.toString());
+		return v.toString();
+	}
+
+}
+---------------------------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<!-- cnfgs dbcp dataSource -->
+	<bean id="dbcp" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="driverClassName"
+			value="org.postgresql.Driver" />
+		<property name="url"
+			value="jdbc:postgresql://localhost:5432/mithu" />
+		<property name="username" value="postgres" />
+		<property name="password" value="postgre" />
+	</bean>
+	<!-- JobLauncher and JobRepository cnfgs -->
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean" />
+
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	
+	<!-- Itemreader which reads date from XML file -->
+	<bean id="reader" class="org.springframework.batch.item.xml.StaxEventItemReader">
+		<property name="resource" value="classpath:com/cts/xml/student_details.xml" />
+	<property name="fragmentRootElementName"
+		value="student" />
+	<property name="unmarshaller">
+		<bean class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+			<property name="classesToBeBound">
+				<list>
+					<value>com.cts.beans.StudentDetails</value>
+				</list>
+			</property>
+		</bean>
+	</property>
+	</bean>
+	
+	<!-- optional ItemProcessor to perform business logic on input 
+	<bean id="processor" class="com.cts.batch.StudentItemProcessor" />-->
+
+	<!-- ItemWriter which writes data in db -->
+	<bean id="writer"
+		class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+		<property name="dataSource"   ref="dbcp"/>
+		<!-- An Aggregator which converts an object into delimted list of strings -->
+		<property name="sql">
+			<value>
+			 <![CDATA[INSERT INTO STUDENT1 VALUES (?,?,?,?,?)]]>
+			</value>
+		</property>
+		<!-- we need a custom setter to sset values to query param by getting values StudentDetails obj -->
+		<property name="ItemPreparedStatementSetter">
+		  <bean class="com.cts.batchsetter.StudentDetailsSetter"/>
+		</property>
+	</bean>
+	
+    
+     <!-- still we need a transaction manager -->
+     <bean id="txmg" class="org.springframework.batch.support.transaction.ResourcelessTransactionManager"/>
+     <!-- Actual Job -->
+     <batch:job id="sjob">
+	  <batch:step id="step1">
+		<batch:tasklet transaction-manager="txmg">
+			<batch:chunk reader="reader" writer="writer"  commit-interval="2" />
+		</batch:tasklet>
+	   </batch:step>
+     </batch:job>
+     
+</beans>
+---------------------------------------------------------------------------
+package com.cts.test;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class StudentDataXmlToDBTest {
+
+	public static void main(String[] args) throws JobExecutionAlreadyRunningException,
+	JobRestartException, JobInstanceAlreadyCompleteException, JobParametersInvalidException {
+		System.out.println("hello");
+		JobLauncher jl=null;
+		JobExecution je=null;
+		Job job=null;
+		ApplicationContext ac=null;
+		ac=new ClassPathXmlApplicationContext("com/cts/cnfgs/spring-batch-beans.xml");
+		jl=ac.getBean("jobLauncher",JobLauncher.class);
+		job=(Job) ac.getBean("sjob");
+		System.out.println("hii");
+		je=jl.run(job, new JobParameters());
+		System.out.println("job Exit status"+je.getStatus());
+		System.out.println("game over");
+		
+	}//main
+}//class
+------------------------------------
